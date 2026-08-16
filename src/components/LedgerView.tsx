@@ -13,6 +13,12 @@ import {
   FileCode,
   RotateCcw,
   X,
+  Filter,
+  Check,
+  ChevronDown,
+  Layers,
+  ArrowDownUp,
+  Tag,
 } from 'lucide-react';
 import {
   CANONICAL_CATEGORIES,
@@ -39,6 +45,24 @@ interface LedgerViewProps {
 type SortField = 'date' | 'vendor' | 'amount' | 'confidence';
 type SortOrder = 'asc' | 'desc';
 
+// Category style mapping
+const CATEGORY_STYLES: Record<string, { badge: string; dot: string }> = {
+  'Marketing & Advertising': { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500' },
+  'Software & SaaS': { badge: 'bg-sky-50 text-sky-700 border-sky-200', dot: 'bg-sky-500' },
+  'Inventory & Raw Materials': { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  'Logistics & Shipping': { badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  'Equipment & Hardware': { badge: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
+  'Professional Services': { badge: 'bg-teal-50 text-teal-700 border-teal-200', dot: 'bg-teal-500' },
+  'Office Supplies': { badge: 'bg-stone-100 text-stone-700 border-stone-200', dot: 'bg-stone-500' },
+  'Travel': { badge: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
+  'Rent & Utilities': { badge: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-500' },
+  'Miscellaneous': { badge: 'bg-stone-100 text-stone-600 border-stone-200', dot: 'bg-stone-400' },
+};
+
+function getCategoryStyle(cat: string) {
+  return CATEGORY_STYLES[cat] || { badge: 'bg-stone-100 text-stone-700 border-stone-200', dot: 'bg-stone-500' };
+}
+
 export const LedgerView: React.FC<LedgerViewProps> = ({
   transactions,
   initialStatusFilter = null,
@@ -58,6 +82,15 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [selectedTxIds, setSelectedTxIds] = useState<string[]>([]);
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Category counts
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    transactions.forEach(t => {
+      counts[t.category] = (counts[t.category] || 0) + 1;
+    });
+    return counts;
+  }, [transactions]);
 
   // Filter and Sort Logic
   const filteredTransactions = useMemo(() => {
@@ -157,426 +190,386 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
     }
   };
 
-  const clearFilters = () => {
-    setSearchQuery('');
-    setSelectedCategory('ALL');
-    setStatusFilter('ALL');
-  };
-
-  const isFiltered = searchQuery !== '' || selectedCategory !== 'ALL' || statusFilter !== 'ALL';
-
   return (
-    <div id="ledger-view" className="w-full max-w-7xl mx-auto space-y-6">
-      {/* Header & Main Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs">
+    <div id="ledger-view" className="w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+      {/* Top Header & Export Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-[#1A1A1A]">Running Ledger</h1>
-            <span className="text-xs bg-stone-100 text-[#5A5A40] font-mono px-2.5 py-0.5 rounded-full font-semibold border border-stone-200">
-              {transactions.length} Total Records
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-[#706B63] mt-1">
-            Complete audit trail of verified and pending expense transactions.
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">
+            Running General Ledger
+          </h1>
+          <p className="text-xs sm:text-sm text-stone-500">
+            {filteredTransactions.length} of {transactions.length} vouchers shown · Real-time verification queue
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           {/* Export Dropdown */}
           <div className="relative">
             <button
-              id="export-ledger-dropdown-btn"
+              id="export-menu-btn"
               type="button"
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="px-4 py-2 text-xs font-semibold text-[#2C2926] bg-white border border-stone-300 hover:bg-stone-50 rounded-full shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-white border border-stone-200 text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-50 shadow-2xs flex items-center gap-2 cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5 text-[#706B63]" />
-              <span>Export {selectedTxIds.length > 0 ? `(${selectedTxIds.length})` : ''}</span>
+              <Download className="w-3.5 h-3.5 text-stone-600" />
+              <span>Export {selectedTxIds.length > 0 ? `(${selectedTxIds.length})` : 'All'}</span>
+              <ChevronDown className="w-3 h-3 text-stone-400" />
             </button>
 
             {showExportMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-stone-200 rounded-xl shadow-lg py-1.5 z-20 text-xs">
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-stone-200 rounded-2xl shadow-lg py-1.5 z-30 animate-in fade-in zoom-in-95 duration-100">
                 <button
                   type="button"
                   onClick={handleExportCSV}
-                  className="w-full text-left px-4 py-2 text-[#2C2926] hover:bg-stone-50 flex items-center gap-2 cursor-pointer"
+                  className="w-full px-4 py-2 text-left text-xs font-medium text-stone-700 hover:bg-stone-50 flex items-center gap-2 cursor-pointer"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-[#5A5A40]" />
-                  Export as CSV
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Download as CSV</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleExportJSON}
-                  className="w-full text-left px-4 py-2 text-[#2C2926] hover:bg-stone-50 flex items-center gap-2 cursor-pointer"
+                  className="w-full px-4 py-2 text-left text-xs font-medium text-stone-700 hover:bg-stone-50 flex items-center gap-2 cursor-pointer"
                 >
-                  <FileCode className="w-3.5 h-3.5 text-[#D97706]" />
-                  Export as JSON
+                  <FileCode className="w-4 h-4 text-amber-600" />
+                  <span>Download as JSON</span>
                 </button>
               </div>
             )}
           </div>
 
+          {/* Add Invoice CTA */}
           <button
-            id="ledger-add-receipt-cta"
+            id="ledger-add-invoice-btn"
             type="button"
             onClick={onNavigateToParser}
-            className="px-5 py-2 text-xs font-semibold text-white bg-[#5A5A40] hover:bg-[#484833] active:bg-[#3C3C2B] rounded-full shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+            className="bg-stone-900 text-white hover:bg-stone-800 active:bg-stone-950 px-4 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
-            <PlusCircle className="w-4 h-4" />
-            <span>Add Receipt</span>
+            <PlusCircle className="w-4 h-4 text-emerald-400" />
+            <span>Add Invoice</span>
           </button>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-          {/* Search Input (5 cols) */}
-          <div className="sm:col-span-5 relative">
-            <Search className="w-4 h-4 text-[#8C877D] absolute left-3.5 top-1/2 -translate-y-1/2" />
+      {/* Filter & Search Bar Card */}
+      <div className="bg-white border border-stone-200/80 rounded-3xl p-5 shadow-xs space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
             <input
               id="ledger-search-input"
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search vendor, invoice #, note, category..."
-              className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm bg-[#F9F8F6] border border-stone-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40] transition-all placeholder:text-[#8C877D]"
+              placeholder="Search vendor, invoice #, or memo..."
+              className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-stone-50/80 border border-stone-200 text-xs sm:text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8C877D] hover:text-[#1A1A1A] cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Category Dropdown (4 cols) */}
-          <div className="sm:col-span-4">
-            <select
-              id="ledger-category-filter"
-              value={selectedCategory}
-              onChange={e => setSelectedCategory(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-[#F9F8F6] border border-stone-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#5A5A40]/30 text-[#2C2926] font-medium"
-            >
-              <option value="ALL">All Expense Categories</option>
-              {CANONICAL_CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter Buttons (3 cols) */}
-          <div className="sm:col-span-3 flex items-center justify-end">
-            <div className="inline-flex rounded-full border border-stone-200 p-0.5 bg-stone-100 w-full justify-between">
+          {/* Status Segmented Control */}
+          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl shrink-0">
+            {(
+              [
+                { id: 'ALL', label: 'All Vouchers', count: transactions.length },
+                {
+                  id: 'Verified',
+                  label: 'Verified',
+                  count: transactions.filter(t => t.status === 'Verified').length,
+                },
+                {
+                  id: 'Needs Review',
+                  label: 'Needs Review',
+                  count: transactions.filter(t => t.status === 'Needs Review').length,
+                },
+              ] as const
+            ).map(tab => (
               <button
+                key={tab.id}
                 type="button"
-                onClick={() => setStatusFilter('ALL')}
-                className={`flex-1 py-1 text-xs font-medium rounded-full transition-all cursor-pointer ${
-                  statusFilter === 'ALL'
-                    ? 'bg-white text-[#1A1A1A] shadow-2xs font-semibold'
-                    : 'text-[#706B63] hover:text-[#1A1A1A]'
+                onClick={() => setStatusFilter(tab.id)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  statusFilter === tab.id
+                    ? 'bg-white text-stone-900 shadow-2xs'
+                    : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                All
+                <span>{tab.label}</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-stone-200/80 text-stone-700">
+                  {tab.count}
+                </span>
               </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('Verified')}
-                className={`flex-1 py-1 text-xs font-medium rounded-full transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                  statusFilter === 'Verified'
-                    ? 'bg-white text-[#5A5A40] shadow-2xs font-bold'
-                    : 'text-[#706B63] hover:text-[#1A1A1A]'
-                }`}
-              >
-                Verified
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('Needs Review')}
-                className={`flex-1 py-1 text-xs font-medium rounded-full transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                  statusFilter === 'Needs Review'
-                    ? 'bg-white text-[#B45309] shadow-2xs font-bold'
-                    : 'text-[#706B63] hover:text-[#1A1A1A]'
-                }`}
-              >
-                Review
-              </button>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Active Filters Pill row (if any active) */}
-        {isFiltered && (
-          <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs text-[#706B63]">
-            <span>
-              Showing {filteredTransactions.length} of {transactions.length} transactions
-            </span>
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-xs text-[#5A5A40] hover:text-[#484833] font-medium flex items-center gap-1 hover:underline cursor-pointer"
-            >
-              <RotateCcw className="w-3 h-3" />
-              Reset all filters
-            </button>
-          </div>
-        )}
+        {/* Category Pills Scroller */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('ALL')}
+            className={`px-3 py-1 text-xs font-bold rounded-full transition-all shrink-0 cursor-pointer ${
+              selectedCategory === 'ALL'
+                ? 'bg-stone-900 text-white shadow-2xs'
+                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            All Categories ({transactions.length})
+          </button>
+          {CANONICAL_CATEGORIES.map(cat => {
+            const count = categoryCounts[cat] || 0;
+            if (count === 0 && selectedCategory !== cat) return null;
+            const isSelected = selectedCategory === cat;
+            const style = getCategoryStyle(cat);
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(isSelected ? 'ALL' : cat)}
+                className={`px-3 py-1 text-xs font-bold rounded-full transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border ${
+                  isSelected
+                    ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                    : `${style.badge} hover:bg-stone-100`
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                <span>{cat}</span>
+                <span className="text-[10px] font-mono opacity-80 font-normal">({count})</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Batch Selection Action Bar (if items selected) */}
-      {selectedTxIds.length > 0 && (
-        <div className="bg-[#2C2926] text-white rounded-2xl px-5 py-3 flex items-center justify-between shadow-md">
-          <div className="text-xs font-medium">
-            <span className="font-bold text-white bg-[#5A5A40] px-2.5 py-0.5 rounded-full mr-2">
-              {selectedTxIds.length}
-            </span>
-            transactions selected
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                onBatchVerify(selectedTxIds);
-                setSelectedTxIds([]);
-              }}
-              className="px-3.5 py-1.5 text-xs font-medium bg-[#5A5A40] hover:bg-[#484833] rounded-full flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Mark as Verified
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onBatchDelete(selectedTxIds);
-                setSelectedTxIds([]);
-              }}
-              className="px-3.5 py-1.5 text-xs font-medium bg-red-800/80 hover:bg-red-800 rounded-full flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete Selected
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedTxIds([])}
-              className="px-3 py-1.5 text-xs text-stone-300 hover:text-white cursor-pointer"
-            >
-              Deselect
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Main Ledger Table */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl overflow-hidden shadow-2xs">
-        {filteredTransactions.length === 0 ? (
-          <div className="p-12 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-stone-100 text-[#8C877D] mx-auto flex items-center justify-center">
-              <FileSpreadsheet className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-semibold text-[#1A1A1A]">
-              {transactions.length === 0 ? 'Your ledger is ready.' : 'No matching transactions found'}
-            </h3>
-            <p className="text-xs sm:text-sm text-[#706B63] max-w-sm mx-auto">
-              {transactions.length === 0
-                ? 'Parse your first invoice to start tracking expenses and running month-end close.'
-                : 'Try adjusting your search terms or clearing active filters.'}
-            </p>
-            <button
-              type="button"
-              onClick={onNavigateToParser}
-              className="mt-2 px-5 py-2 text-xs sm:text-sm font-semibold text-white bg-[#5A5A40] hover:bg-[#484833] rounded-full transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-            >
-              <PlusCircle className="w-4 h-4" />
-              Parse Invoice
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-[#F4F3EE] text-[#706B63] border-b border-stone-200 font-semibold select-none">
+      <div className="bg-white border border-stone-200/80 rounded-3xl overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="bg-stone-50/80 border-b border-stone-100 text-stone-500 font-bold uppercase tracking-wider text-[10px]">
+                <th className="py-3.5 pl-4 w-10">
+                  <input
+                    type="checkbox"
+                    checked={
+                      filteredTransactions.length > 0 &&
+                      selectedTxIds.length === filteredTransactions.length
+                    }
+                    onChange={handleSelectAll}
+                    className="rounded border-stone-300 text-stone-900 focus:ring-stone-900 cursor-pointer"
+                  />
+                </th>
+                <th className="py-3.5 cursor-pointer hover:text-stone-900" onClick={() => toggleSort('vendor')}>
+                  <div className="flex items-center gap-1.5">
+                    <span>Vendor / Merchant</span>
+                    <ArrowDownUp className="w-3 h-3 text-stone-400" />
+                  </div>
+                </th>
+                <th className="py-3.5">Category</th>
+                <th className="py-3.5 cursor-pointer hover:text-stone-900" onClick={() => toggleSort('date')}>
+                  <div className="flex items-center gap-1.5">
+                    <span>Date</span>
+                    <ArrowDownUp className="w-3 h-3 text-stone-400" />
+                  </div>
+                </th>
+                <th
+                  className="py-3.5 text-right cursor-pointer hover:text-stone-900"
+                  onClick={() => toggleSort('amount')}
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span>Amount</span>
+                    <ArrowDownUp className="w-3 h-3 text-stone-400" />
+                  </div>
+                </th>
+                <th className="py-3.5 text-center">Status</th>
+                <th
+                  className="py-3.5 text-center cursor-pointer hover:text-stone-900"
+                  onClick={() => toggleSort('confidence')}
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span>AI Confidence</span>
+                    <ArrowDownUp className="w-3 h-3 text-stone-400" />
+                  </div>
+                </th>
+                <th className="py-3.5 text-right pr-4">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {filteredTransactions.length === 0 ? (
                 <tr>
-                  <th className="px-4 py-3.5 w-8">
-                    <input
-                      type="checkbox"
-                      checked={
-                        filteredTransactions.length > 0 &&
-                        selectedTxIds.length === filteredTransactions.length
-                      }
-                      onChange={handleSelectAll}
-                      className="rounded border-stone-300 text-[#5A5A40] focus:ring-[#5A5A40]"
-                    />
-                  </th>
-
-                  <th
-                    className="px-4 py-3.5 cursor-pointer hover:text-[#5A5A40]"
-                    onClick={() => toggleSort('date')}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>Date</span>
-                      <ArrowUpDown className="w-3 h-3 text-[#8C877D]" />
-                    </div>
-                  </th>
-
-                  <th
-                    className="px-4 py-3.5 cursor-pointer hover:text-[#5A5A40]"
-                    onClick={() => toggleSort('vendor')}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>Vendor</span>
-                      <ArrowUpDown className="w-3 h-3 text-[#8C877D]" />
-                    </div>
-                  </th>
-
-                  <th className="px-4 py-3.5">Description</th>
-
-                  <th className="px-4 py-3.5">Category</th>
-
-                  <th
-                    className="px-4 py-3.5 text-right cursor-pointer hover:text-[#5A5A40]"
-                    onClick={() => toggleSort('amount')}
-                  >
-                    <div className="flex items-center justify-end gap-1">
-                      <span>Amount</span>
-                      <ArrowUpDown className="w-3 h-3 text-[#8C877D]" />
-                    </div>
-                  </th>
-
-                  <th className="px-4 py-3.5 text-center">Status</th>
-
-                  <th
-                    className="px-4 py-3.5 cursor-pointer hover:text-[#5A5A40]"
-                    onClick={() => toggleSort('confidence')}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>Confidence</span>
-                      <ArrowUpDown className="w-3 h-3 text-[#8C877D]" />
-                    </div>
-                  </th>
-
-                  <th className="px-4 py-3.5 text-right">Actions</th>
+                  <td colSpan={8} className="py-12 text-center text-stone-400 space-y-2">
+                    <p className="text-sm font-semibold text-stone-600">No matching transactions found</p>
+                    <p className="text-xs text-stone-400">Try adjusting your search or category filter</p>
+                  </td>
                 </tr>
-              </thead>
-
-              <tbody className="divide-y divide-stone-100">
-                {filteredTransactions.map(tx => {
+              ) : (
+                filteredTransactions.map(tx => {
                   const isSelected = selectedTxIds.includes(tx.id);
+                  const style = getCategoryStyle(tx.category);
                   return (
                     <tr
                       key={tx.id}
-                      className={`hover:bg-stone-50/80 transition-colors ${
-                        isSelected ? 'bg-[#5A5A40]/5' : ''
+                      className={`hover:bg-stone-50/70 transition-colors group ${
+                        isSelected ? 'bg-amber-50/30' : ''
                       }`}
                     >
-                      {/* Checkbox */}
-                      <td className="px-4 py-3.5">
+                      <td className="py-3 pl-4">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectOne(tx.id)}
-                          className="rounded border-stone-300 text-[#5A5A40] focus:ring-[#5A5A40]"
+                          className="rounded border-stone-300 text-stone-900 focus:ring-stone-900 cursor-pointer"
                         />
                       </td>
 
-                      {/* Date */}
-                      <td className="px-4 py-3.5 font-mono text-[#706B63] whitespace-nowrap">
-                        {tx.transactionDate}
-                      </td>
-
-                      {/* Vendor */}
-                      <td className="px-4 py-3.5">
-                        <div className="font-semibold text-[#1A1A1A]">{tx.vendor}</div>
-                        {tx.invoiceNumber && (
-                          <div className="text-[11px] text-[#8C877D] font-mono">
-                            Inv: {tx.invoiceNumber}
+                      <td className="py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center font-bold text-stone-700 uppercase text-xs shrink-0">
+                            {tx.vendor.slice(0, 2)}
                           </div>
-                        )}
+                          <div>
+                            <div className="font-bold text-stone-900">{tx.vendor}</div>
+                            <div className="text-[11px] text-stone-400 font-mono">
+                              {tx.invoiceNumber || tx.id.slice(0, 12)}
+                            </div>
+                          </div>
+                        </div>
                       </td>
 
-                      {/* Description */}
-                      <td className="px-4 py-3.5 text-[#706B63] max-w-xs truncate" title={tx.shortDescription}>
-                        {tx.shortDescription}
-                      </td>
-
-                      {/* Category */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-stone-100 text-[#5A5A40] border border-stone-200">
-                          {tx.category}
+                      <td className="py-3">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${style.badge}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                          <span>{tx.category}</span>
                         </span>
                       </td>
 
-                      {/* Amount */}
-                      <td className="px-4 py-3.5 text-right font-mono font-bold text-[#1A1A1A] whitespace-nowrap">
-                        {tx.currency === 'INR'
-                          ? formatINR(tx.totalAmount)
-                          : `${tx.currency} ${tx.totalAmount.toLocaleString()}`}
+                      <td className="py-3 font-mono text-stone-600">{tx.transactionDate}</td>
+
+                      <td className="py-3 text-right font-mono font-bold text-stone-900">
+                        {tx.currency === 'INR' ? '₹' : tx.currency === 'USD' ? '$' : tx.currency}{' '}
+                        {tx.totalAmount.toLocaleString()}
                       </td>
 
-                      {/* Status */}
-                      <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                      <td className="py-3 text-center">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
                             tx.status === 'Verified'
-                              ? 'bg-stone-100 text-[#5A5A40] border border-stone-300'
-                              : 'bg-orange-50 text-[#92400E] border border-orange-200'
+                              ? 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20'
+                              : 'bg-amber-500/10 text-amber-900 border-amber-500/25'
                           }`}
                         >
                           {tx.status === 'Verified' ? (
-                            <CheckCircle2 className="w-3 h-3 text-[#5A5A40]" />
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                           ) : (
-                            <AlertTriangle className="w-3 h-3 text-[#D97706]" />
+                            <AlertTriangle className="w-3 h-3 text-amber-600" />
                           )}
-                          {tx.status}
+                          <span>{tx.status}</span>
                         </span>
                       </td>
 
-                      {/* Confidence */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <ConfidenceBadge score={tx.confidence} size="sm" />
+                      <td className="py-3 text-center">
+                        <ConfidenceBadge score={tx.confidence} size="sm" showLabel={false} />
                       </td>
 
-                      {/* Actions */}
-                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                      <td className="py-3 text-right pr-4">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
                             onClick={() => onViewTransaction(tx)}
-                            className="p-1.5 rounded-lg text-[#706B63] hover:text-[#1A1A1A] hover:bg-stone-100 transition-colors cursor-pointer"
-                            title="View full record"
+                            title="View Details"
+                            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => onEditTransaction(tx)}
-                            className="p-1.5 rounded-lg text-[#706B63] hover:text-[#5A5A40] hover:bg-stone-100 transition-colors cursor-pointer"
-                            title="Edit record"
+                            title="Edit Entry"
+                            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => onDeleteTransaction(tx.id)}
-                            className="p-1.5 rounded-lg text-[#706B63] hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
-                            title="Delete record"
+                            title="Delete Voucher"
+                            className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Floating Batch Action Bar */}
+      {selectedTxIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-stone-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-6 duration-200 border border-stone-800">
+          <span className="text-xs font-bold font-mono text-stone-300">
+            {selectedTxIds.length} vouchers selected
+          </span>
+
+          <div className="h-4 w-px bg-stone-700" />
+
+          <button
+            type="button"
+            onClick={() => {
+              onBatchVerify(selectedTxIds);
+              setSelectedTxIds([]);
+            }}
+            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Check className="w-3.5 h-3.5" />
+            <span>Verify Selected</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              onBatchDelete(selectedTxIds);
+              setSelectedTxIds([]);
+            }}
+            className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedTxIds([])}
+            className="p-1 text-stone-400 hover:text-white"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

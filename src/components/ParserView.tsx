@@ -9,6 +9,13 @@ import {
   ArrowRight,
   ClipboardPaste,
   Trash2,
+  ShieldCheck,
+  CheckCircle2,
+  AlertTriangle,
+  FileCode2,
+  ScanText,
+  Upload,
+  Cpu,
 } from 'lucide-react';
 import { DEMO_INVOICES, DemoInvoice } from '../data/demoInvoices';
 import { LedgerTransaction, ParsedInvoiceData } from '../types';
@@ -27,8 +34,9 @@ export const ParserView: React.FC<ParserViewProps> = ({
 }) => {
   const [rawText, setRawText] = useState<string>('');
   const [selectedDemoId, setSelectedDemoId] = useState<string | null>(null);
+  const [activeDemoCategory, setActiveDemoCategory] = useState<'all' | 'clean' | 'anomaly' | 'tax-gst' | 'usd'>('all');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [analysisStep, setAnalysisStep] = useState<string>('Reading invoice...');
+  const [analysisStep, setAnalysisStep] = useState<string>('Reading invoice text...');
   const [analysisProgress, setAnalysisProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [parsedResult, setParsedResult] = useState<ParsedInvoiceData | null>(null);
@@ -42,13 +50,13 @@ export const ParserView: React.FC<ParserViewProps> = ({
 
   const handleAnalyze = async () => {
     if (!rawText || rawText.trim().length === 0) {
-      setError('Please paste raw invoice or receipt text, or pick one of the demo samples above.');
+      setError('Please paste raw invoice or receipt text, or pick one of the sample test cases below.');
       return;
     }
 
     setError(null);
     setIsAnalyzing(true);
-    setAnalysisStep('Reading invoice text...');
+    setAnalysisStep('Normalizing document text & OCR...');
     setAnalysisProgress(15);
 
     try {
@@ -62,7 +70,7 @@ export const ParserView: React.FC<ParserViewProps> = ({
       console.error('Invoice analysis error:', err);
       setError(
         err?.message ||
-          "We couldn't confidently extract this invoice. Please check the text format and try again."
+          "Could not extract invoice. Please check the text format and try again."
       );
     } finally {
       setIsAnalyzing(false);
@@ -91,15 +99,16 @@ export const ParserView: React.FC<ParserViewProps> = ({
 
   if (parsedResult) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 animate-in fade-in duration-300">
         <div className="flex items-center justify-between">
           <button
             id="back-to-input-btn"
+            type="button"
             onClick={() => setParsedResult(null)}
-            className="text-xs font-semibold text-[#706B63] hover:text-[#1A1A1A] flex items-center gap-1.5 px-4 py-2 rounded-full border border-stone-200 bg-white hover:bg-stone-50 transition-colors cursor-pointer"
+            className="text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-2 px-4 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 transition-colors shadow-2xs cursor-pointer"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-[#5A5A40]" />
-            Paste Another Invoice / Re-edit Raw Text
+            <RotateCcw className="w-3.5 h-3.5 text-stone-700" />
+            <span>Re-edit Raw Text / Parse Another</span>
           </button>
         </div>
         <ReviewPanel
@@ -116,205 +125,230 @@ export const ParserView: React.FC<ParserViewProps> = ({
   const charCount = rawText.length;
   const lineCount = rawText ? rawText.split('\n').length : 0;
 
+  const filteredDemos = DEMO_INVOICES.filter(d => {
+    if (activeDemoCategory === 'all') return true;
+    return d.categoryTag === activeDemoCategory;
+  });
+
   return (
-    <div id="parser-view" className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Header */}
+    <div id="parser-view" className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
+      {/* Studio Header */}
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-stone-100 border border-stone-200 text-[#5A5A40] text-xs font-medium">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Gemini 3.7 Structured Financial Extraction</span>
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-semibold">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Gemini 3.7 + Deterministic Audit Engine</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#1A1A1A]">
-          Paste Receipt or Invoice
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">
+          AI Invoice & Receipt Extraction
         </h1>
-        <p className="text-sm text-[#706B63] max-w-2xl mx-auto leading-relaxed">
-          Paste raw receipt, invoice, OCR, email, or Slack text and LedgerAI will structure,
-          categorize, and validate it automatically for bookkeeping.
+        <p className="text-xs sm:text-sm text-stone-500 max-w-xl mx-auto leading-relaxed">
+          Paste unstructured OCR text, email forwards, or Slack slips. LedgerAI extracts vendors, amounts, GST, and flags duplicates automatically.
         </p>
       </div>
 
-      {/* One-Click Demo Invoices */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between">
+      {/* Main Input Textarea Card */}
+      <div className="bg-white border border-stone-200/80 rounded-3xl p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-stone-100">
           <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-[#D97706]" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#1A1A1A]">
-              One-Click Demo Invoices for Judges
+            <ScanText className="w-4 h-4 text-stone-700" />
+            <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Raw Document Text</span>
+            <span className="text-[11px] text-stone-400 font-mono">
+              ({lineCount} lines · {charCount} chars)
             </span>
           </div>
-          <span className="text-xs text-[#8C877D]">Click to auto-populate</span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-          {DEMO_INVOICES.map(demo => {
-            const isSelected = selectedDemoId === demo.id;
-            return (
-              <button
-                key={demo.id}
-                id={`demo-btn-${demo.id}`}
-                type="button"
-                onClick={() => handleSelectDemo(demo)}
-                className={`p-3 rounded-xl text-left transition-all border text-xs flex flex-col justify-between cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#5A5A40]/10 border-[#5A5A40] text-[#5A5A40] ring-2 ring-[#5A5A40]/20'
-                    : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-[#2C2926]'
-                }`}
-              >
-                <div className="font-semibold truncate">{demo.label}</div>
-                <div className="mt-1.5 flex items-center justify-between">
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                      demo.isMessy
-                        ? 'bg-orange-100 text-[#92400E]'
-                        : isSelected
-                        ? 'bg-[#5A5A40] text-white'
-                        : 'bg-stone-200/80 text-[#706B63]'
-                    }`}
-                  >
-                    {demo.badge}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Main Raw Text Area */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between">
-          <label htmlFor="raw-invoice-textarea" className="text-xs font-semibold text-[#1A1A1A] flex items-center gap-1.5">
-            <FileText className="w-4 h-4 text-[#706B63]" />
-            Unstructured Receipt / Invoice Text
-          </label>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handlePasteFromClipboard}
-              className="text-xs text-[#706B63] hover:text-[#1A1A1A] bg-stone-100 hover:bg-stone-200 px-3 py-1 rounded-full flex items-center gap-1 transition-colors cursor-pointer"
-              title="Paste from clipboard"
+              className="text-xs font-semibold text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-lg hover:bg-stone-100 transition-colors flex items-center gap-1.5 cursor-pointer border border-stone-200"
             >
-              <ClipboardPaste className="w-3 h-3 text-[#5A5A40]" />
-              Paste
+              <ClipboardPaste className="w-3.5 h-3.5 text-stone-600" />
+              <span>Paste Clipboard</span>
             </button>
             {rawText && (
               <button
                 type="button"
                 onClick={handleReset}
-                className="text-xs text-[#92400E] hover:text-[#78350F] bg-orange-50 hover:bg-orange-100 px-3 py-1 rounded-full flex items-center gap-1 transition-colors cursor-pointer"
-                title="Clear input"
+                className="text-xs font-semibold text-rose-600 hover:text-rose-700 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 transition-colors flex items-center gap-1 cursor-pointer"
               >
-                <Trash2 className="w-3 h-3 text-[#D97706]" />
-                Clear
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear</span>
               </button>
             )}
           </div>
         </div>
 
+        {/* Text Area */}
         <div className="relative">
           <textarea
             id="raw-invoice-textarea"
-            rows={10}
             value={rawText}
             onChange={e => {
               setRawText(e.target.value);
               setSelectedDemoId(null);
               setError(null);
             }}
-            placeholder={`Paste raw text from an invoice, email, PDF OCR, or Slack forward here...
+            placeholder={`Paste raw receipt text, OCR output, or Slack invoice message here...
 
 Example:
-Invoice #INV-2391
-Meta Platforms Ireland Ltd
-Date: 12 August 2026
-Facebook Advertising Campaign: Summer Sale
-Subtotal: ₹42,372
-GST: ₹7,627
-Total Amount Due: ₹49,999
-Payment Status: Paid`}
-            disabled={isAnalyzing}
-            className="w-full p-4 text-sm font-mono bg-[#F9F8F6] border border-stone-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40] transition-all leading-relaxed placeholder:text-[#8C877D]"
+Amazon Web Services, Inc.
+Invoice Number: AWS-2026-889104
+Date: 2026-08-14
+Total Amount Due: $508.20 USD
+Subtotal: $508.20 | Tax: $0.00`}
+            rows={8}
+            className="w-full p-4 rounded-2xl bg-stone-50/70 border border-stone-200 text-stone-900 placeholder:text-stone-400 font-mono text-xs sm:text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-stone-900 focus:bg-white transition-all resize-y"
           />
-
-          <div className="absolute bottom-3 right-3 text-[11px] text-[#706B63] bg-white/90 px-2 py-0.5 rounded-full border border-stone-200 font-mono">
-            {lineCount} lines · {charCount} chars
-          </div>
         </div>
 
-        {/* Error Alert */}
+        {/* Error Alert Box */}
         {error && (
           <div
-            id="parser-error-alert"
-            className="p-4 rounded-xl bg-orange-50/80 border border-orange-200 text-[#92400E] text-sm flex items-start gap-2.5"
+            id="parser-error-box"
+            className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-3"
           >
-            <AlertCircle className="w-4 h-4 text-[#D97706] shrink-0 mt-0.5" />
-            <div>
-              <div className="font-semibold text-[#78350F]">Extraction Alert</div>
-              <div className="mt-0.5 text-xs text-[#92400E] leading-relaxed">{error}</div>
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <span className="font-bold">Extraction Notice:</span>
+              <p className="leading-relaxed">{error}</p>
             </div>
           </div>
         )}
 
-        {/* Processing State Card */}
+        {/* Progress Hud during Analysis */}
         {isAnalyzing && (
-          <div
-            id="ai-processing-status"
-            className="p-4 rounded-xl bg-[#F4F3EE] border border-stone-200 text-[#1A1A1A] space-y-3 animate-pulse"
-          >
+          <div className="p-4 rounded-2xl bg-stone-900 text-white space-y-3 animate-in fade-in duration-200 shadow-md">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold flex items-center gap-2 text-[#5A5A40]">
-                <Loader2 className="w-4 h-4 animate-spin text-[#5A5A40]" />
-                {analysisStep}
-              </span>
-              <span className="font-mono text-[#5A5A40] font-bold">{analysisProgress}%</span>
+              <div className="flex items-center gap-2 font-medium">
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                <span>{analysisStep}</span>
+              </div>
+              <span className="font-mono text-emerald-400 font-bold">{analysisProgress}%</span>
             </div>
-
-            <div className="w-full bg-stone-200 rounded-full h-1.5 overflow-hidden">
+            <div className="w-full bg-stone-800 rounded-full h-1.5 overflow-hidden">
               <div
-                className="bg-[#5A5A40] h-1.5 rounded-full transition-all duration-300 ease-out"
+                className="bg-emerald-400 h-full rounded-full transition-all duration-300"
                 style={{ width: `${analysisProgress}%` }}
               />
-            </div>
-
-            <div className="text-[11px] text-[#706B63] flex items-center justify-between">
-              <span>Extracting vendor, amounts & category</span>
-              <span>Running deterministic validation</span>
             </div>
           </div>
         )}
 
         {/* Action Button */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-          <div className="text-xs text-[#706B63]">
-            <span className="font-semibold text-[#1A1A1A]">Financial Safety:</span> AI proposes,
-            validation checks, and you confirm before saving to ledger.
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+          <div className="flex items-center gap-2 text-xs text-stone-500">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>Automatic GST Split · Duplicate Detection · Multi-Currency</span>
           </div>
 
           <button
             id="analyze-invoice-btn"
             type="button"
-            onClick={handleAnalyze}
             disabled={isAnalyzing || !rawText.trim()}
-            className={`w-full sm:w-auto px-6 py-2.5 rounded-full text-sm font-semibold text-white shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              isAnalyzing || !rawText.trim()
-                ? 'bg-stone-300 cursor-not-allowed text-stone-500'
-                : 'bg-[#5A5A40] hover:bg-[#484833] active:bg-[#3C3C2B]'
-            }`}
+            onClick={handleAnalyze}
+            className="bg-stone-900 text-white hover:bg-stone-800 active:bg-stone-950 disabled:bg-stone-200 disabled:text-stone-400 px-6 py-3 rounded-2xl text-xs sm:text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:cursor-not-allowed"
           >
             {isAnalyzing ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Analyzing with AI...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                <span>Extracting Fields...</span>
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-4 h-4 text-amber-400" />
                 <span>Analyze with AI</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
+        </div>
+      </div>
+
+      {/* One-Click Sample Invoices & Test Cases Studio */}
+      <div className="bg-white border border-stone-200/80 rounded-3xl p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-700">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-stone-900">One-Click Sample & Negative Test Cases</h2>
+              <p className="text-xs text-stone-500">Instant test templates to evaluate parser resilience</p>
+            </div>
+          </div>
+
+          {/* Filter tabs */}
+          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
+            {(
+              [
+                { id: 'all', label: 'All' },
+                { id: 'clean', label: 'Standard' },
+                { id: 'tax-gst', label: 'GST Split' },
+                { id: 'usd', label: 'USD' },
+                { id: 'anomaly', label: 'Edge / Negative' },
+              ] as const
+            ).map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveDemoCategory(tab.id)}
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                  activeDemoCategory === tab.id
+                    ? 'bg-white text-stone-900 shadow-2xs'
+                    : 'text-stone-500 hover:text-stone-900'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Demo Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {filteredDemos.map(demo => {
+            const isSelected = selectedDemoId === demo.id;
+            return (
+              <button
+                key={demo.id}
+                type="button"
+                onClick={() => handleSelectDemo(demo)}
+                className={`text-left p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-2 cursor-pointer ${
+                  isSelected
+                    ? 'bg-stone-900 text-white border-stone-900 shadow-xs'
+                    : 'bg-stone-50/60 hover:bg-white text-stone-900 border-stone-200/80 hover:border-stone-300'
+                }`}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span
+                      className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${
+                        isSelected
+                          ? 'bg-stone-800 text-amber-300'
+                          : demo.isMessy
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-stone-200 text-stone-700'
+                      }`}
+                    >
+                      {demo.badge}
+                    </span>
+                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+                  </div>
+                  <h3 className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-stone-900'}`}>
+                    {demo.label}
+                  </h3>
+                  <p className={`text-[11px] line-clamp-2 leading-relaxed ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}>
+                    {demo.description}
+                  </p>
+                </div>
+
+                <div className={`text-[10px] font-mono font-medium pt-1 ${isSelected ? 'text-stone-400' : 'text-stone-400'}`}>
+                  Click to load text →
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

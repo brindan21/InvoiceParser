@@ -7,6 +7,13 @@ import {
   Copy,
   Check,
   Save,
+  Building2,
+  Calendar,
+  FileText,
+  Tag,
+  DollarSign,
+  Trash2,
+  FileCode2,
 } from 'lucide-react';
 import {
   CANONICAL_CATEGORIES,
@@ -48,7 +55,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [currency, setCurrency] = useState(transaction.currency || 'INR');
   const [shortDescription, setShortDescription] = useState(transaction.shortDescription);
   const [status, setStatus] = useState<'Verified' | 'Needs Review'>(transaction.status);
-  const [showRaw, setShowRaw] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'raw'>('details');
   const [copiedRaw, setCopiedRaw] = useState(false);
 
   const handleCopyRaw = () => {
@@ -80,186 +87,220 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-150">
       <div
         id="transaction-detail-modal"
-        className="bg-white border border-stone-200 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+        className="bg-white border border-stone-200 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]"
       >
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-[#F4F3EE]">
+        <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/80">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-[#5A5A40]">
+            <div className="w-10 h-10 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-800">
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-[#1A1A1A]">
-                  {mode === 'edit' ? 'Edit Ledger Entry' : 'Transaction Details'}
+                <h3 className="text-base font-bold text-stone-900">
+                  {mode === 'edit' ? 'Edit Voucher' : 'Voucher Details'}
                 </h3>
-                <span className="text-xs font-mono bg-stone-200/80 text-[#5A5A40] px-2.5 py-0.5 rounded-full font-medium">
-                  {transaction.id}
+                <span className="text-xs font-mono bg-stone-200 text-stone-700 px-2 py-0.5 rounded-md font-medium">
+                  {transaction.id.slice(0, 10)}
                 </span>
               </div>
-              <p className="text-xs text-[#706B63]">Booked: {new Date(transaction.createdAt).toLocaleString()}</p>
+              <p className="text-xs text-stone-500">Booked: {new Date(transaction.createdAt).toLocaleString()}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {mode === 'view' && (
+            {mode === 'view' ? (
               <button
                 type="button"
                 onClick={() => setMode('edit')}
-                className="px-3.5 py-1 text-xs font-semibold text-[#5A5A40] bg-stone-100 hover:bg-stone-200 rounded-full transition-colors cursor-pointer"
+                className="px-3 py-1.5 text-xs font-bold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-colors cursor-pointer"
               >
                 Edit
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMode('view')}
+                className="px-3 py-1.5 text-xs font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors cursor-pointer"
+              >
+                View
               </button>
             )}
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full text-[#8C877D] hover:text-[#1A1A1A] hover:bg-stone-200/60 transition-colors cursor-pointer"
+              className="p-1.5 rounded-xl text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
+        {/* Modal Navigation Tabs (Details vs Raw Document) */}
+        <div className="px-6 border-b border-stone-100 flex items-center gap-4 text-xs font-bold bg-white">
+          <button
+            type="button"
+            onClick={() => setActiveTab('details')}
+            className={`py-3 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'details'
+                ? 'border-stone-900 text-stone-900'
+                : 'border-transparent text-stone-400 hover:text-stone-600'
+            }`}
+          >
+            Voucher Summary
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('raw')}
+            className={`py-3 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'raw'
+                ? 'border-stone-900 text-stone-900'
+                : 'border-transparent text-stone-400 hover:text-stone-600'
+            }`}
+          >
+            <FileCode2 className="w-3.5 h-3.5" />
+            <span>Raw Source Document</span>
+          </button>
+        </div>
+
         {/* Modal Body */}
-        <div className="p-6 max-h-[75vh] overflow-y-auto space-y-5">
-          {/* Top Status & Confidence Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-stone-50 border border-stone-200/80">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-[#706B63] font-medium">Status:</span>
-              <span
-                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                  status === 'Verified'
-                    ? 'bg-stone-100 text-[#5A5A40] border border-stone-300'
-                    : 'bg-orange-50 text-[#92400E] border border-orange-200'
-                }`}
-              >
-                {status === 'Verified' ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5A5A40]" />
-                ) : (
-                  <AlertTriangle className="w-3.5 h-3.5 text-[#D97706]" />
-                )}
-                {status}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-[#706B63] font-medium">AI Confidence:</span>
-              <ConfidenceBadge score={transaction.confidence} size="sm" />
-            </div>
-          </div>
-
-          {transaction.reviewReason && (
-            <div className="p-3.5 rounded-xl bg-orange-50/80 border border-orange-200 text-xs text-[#92400E] flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-[#D97706] shrink-0 mt-0.5" />
-              <div>
-                <span className="font-semibold text-[#78350F]">Review Flag: </span>
-                {transaction.reviewReason}
+        <div className="p-6 overflow-y-auto flex-1 space-y-5">
+          {activeTab === 'raw' ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-stone-700">Original Ingested OCR / Text</span>
+                <button
+                  type="button"
+                  onClick={handleCopyRaw}
+                  className="text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedRaw ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedRaw ? 'Copied' : 'Copy Text'}</span>
+                </button>
               </div>
+              <pre className="p-4 rounded-2xl bg-stone-50 border border-stone-200 font-mono text-xs text-stone-700 whitespace-pre-wrap leading-relaxed">
+                {transaction.rawText || 'No raw text archived for this voucher.'}
+              </pre>
             </div>
-          )}
+          ) : mode === 'view' ? (
+            <div className="space-y-5">
+              {/* Status & Confidence Card */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-stone-500">Status:</span>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      transaction.status === 'Verified'
+                        ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/20'
+                        : 'bg-amber-500/10 text-amber-900 border border-amber-500/25'
+                    }`}
+                  >
+                    {transaction.status === 'Verified' ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                    )}
+                    <span>{transaction.status}</span>
+                  </span>
+                </div>
+                <ConfidenceBadge score={transaction.confidence} size="sm" />
+              </div>
 
-          {mode === 'view' ? (
-            /* View Mode */
-            <div className="space-y-4 text-xs">
+              {/* Information Grid */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/80 space-y-1">
-                  <span className="text-[#8C877D] font-medium">Vendor</span>
-                  <div className="text-sm font-semibold text-[#1A1A1A]">{transaction.vendor}</div>
+                <div className="space-y-1">
+                  <span className="text-[11px] font-bold uppercase text-stone-400">Vendor</span>
+                  <p className="text-sm font-bold text-stone-900">{transaction.vendor}</p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/80 space-y-1">
-                  <span className="text-[#8C877D] font-medium">Transaction Date</span>
-                  <div className="text-sm font-semibold font-mono text-[#1A1A1A]">{transaction.transactionDate}</div>
+                <div className="space-y-1">
+                  <span className="text-[11px] font-bold uppercase text-stone-400">Invoice Number</span>
+                  <p className="text-sm font-mono font-bold text-stone-900">
+                    {transaction.invoiceNumber || 'None Specified'}
+                  </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/80 space-y-1">
-                  <span className="text-[#8C877D] font-medium">Category</span>
-                  <div className="text-sm font-semibold text-[#1A1A1A]">{transaction.category}</div>
+                <div className="space-y-1">
+                  <span className="text-[11px] font-bold uppercase text-stone-400">Transaction Date</span>
+                  <p className="text-sm font-mono text-stone-900">{transaction.transactionDate}</p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/80 space-y-1">
-                  <span className="text-[#8C877D] font-medium">Invoice #</span>
-                  <div className="text-sm font-semibold font-mono text-[#1A1A1A]">
-                    {transaction.invoiceNumber || 'None'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-[#F4F3EE] border border-stone-200/90 space-y-2">
-                <span className="text-[#706B63] font-medium">Financial Summary</span>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <span className="text-[11px] text-[#8C877D]">Subtotal:</span>
-                    <div className="font-mono font-medium text-[#2C2926]">
-                      {transaction.subtotal !== null ? `${transaction.currency} ${transaction.subtotal.toLocaleString()}` : '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-[#8C877D]">Tax Amount:</span>
-                    <div className="font-mono font-medium text-[#2C2926]">
-                      {transaction.taxAmount !== null ? `${transaction.currency} ${transaction.taxAmount.toLocaleString()}` : '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-[#8C877D] font-semibold">Total Amount:</span>
-                    <div className="font-mono font-bold text-[#1A1A1A] text-sm">
-                      {transaction.currency === 'INR' ? formatINR(transaction.totalAmount) : `${transaction.currency} ${transaction.totalAmount.toLocaleString()}`}
-                    </div>
-                  </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] font-bold uppercase text-stone-400">Category</span>
+                  <p className="text-sm font-semibold text-stone-900">{transaction.category}</p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-200/80 space-y-1">
-                <span className="text-[#8C877D] font-medium">Description</span>
-                <div className="text-[#2C2926] leading-relaxed">{transaction.shortDescription}</div>
+              {/* Financial Box */}
+              <div className="p-4 rounded-2xl bg-stone-900 text-white space-y-3">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                  Total Booked Expense ({transaction.currency || 'INR'})
+                </div>
+                <div className="text-3xl font-bold font-mono text-emerald-400">
+                  {transaction.currency === 'INR' ? '₹' : transaction.currency === 'USD' ? '$' : transaction.currency}{' '}
+                  {transaction.totalAmount.toLocaleString()}
+                </div>
+                {(transaction.subtotal !== null || transaction.taxAmount !== null) && (
+                  <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-xs font-mono text-stone-300">
+                    <span>Subtotal: {transaction.subtotal?.toLocaleString() || '-'}</span>
+                    <span>Tax / GST: {transaction.taxAmount?.toLocaleString() || '-'}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Memo */}
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold uppercase text-stone-400">Accounting Memo</span>
+                <p className="text-xs text-stone-600 bg-stone-50 p-3 rounded-xl border border-stone-200">
+                  {transaction.shortDescription || 'No description entered.'}
+                </p>
               </div>
             </div>
           ) : (
-            /* Edit Mode */
-            <form id="edit-transaction-form" onSubmit={handleSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[#1A1A1A] font-semibold mb-1">Vendor Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={vendor}
-                    onChange={e => setVendor(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-stone-300 rounded-xl bg-[#F9F8F6] text-xs focus:bg-white focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40]"
-                  />
-                </div>
+            <form id="edit-transaction-form" onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">Vendor Name</label>
+                <input
+                  type="text"
+                  required
+                  value={vendor}
+                  onChange={e => setVendor(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900"
+                />
+              </div>
 
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[#1A1A1A] font-semibold mb-1">Date *</label>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">Date</label>
                   <input
                     type="date"
                     required
                     value={transactionDate}
                     onChange={e => setTransactionDate(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-stone-300 rounded-xl bg-[#F9F8F6] text-xs font-mono focus:bg-white focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40]"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs font-mono"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-[#1A1A1A] font-semibold mb-1">Invoice #</label>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">Invoice #</label>
                   <input
                     type="text"
                     value={invoiceNumber}
                     onChange={e => setInvoiceNumber(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-stone-300 rounded-xl bg-[#F9F8F6] text-xs font-mono focus:bg-white focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40]"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs font-mono"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[#1A1A1A] font-semibold mb-1">Category *</label>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">Category</label>
                   <select
                     value={category}
                     onChange={e => setCategory(e.target.value as ExpenseCategory)}
-                    className="w-full px-3.5 py-2 border border-stone-300 rounded-xl bg-[#F9F8F6] text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40]"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold bg-white"
                   >
                     {CANONICAL_CATEGORIES.map(c => (
                       <option key={c} value={c}>
@@ -270,23 +311,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[#1A1A1A] font-semibold mb-1">Total Amount *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    required
-                    value={totalAmount}
-                    onChange={e => setTotalAmount(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-stone-300 rounded-xl bg-[#F9F8F6] text-xs font-mono font-bold focus:bg-white focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[#1A1A1A] font-semibold mb-1">Status</label>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">Status</label>
                   <select
                     value={status}
                     onChange={e => setStatus(e.target.value as any)}
-                    className="w-full px-3.5 py-2 border border-stone-300 rounded-xl bg-[#F9F8F6] text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40]"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold bg-white"
                   >
                     <option value="Verified">Verified</option>
                     <option value="Needs Review">Needs Review</option>
@@ -294,85 +323,83 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">Subtotal</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={subtotal}
+                    onChange={e => setSubtotal(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">Tax</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={taxAmount}
+                    onChange={e => setTaxAmount(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">Total</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={totalAmount}
+                    onChange={e => setTotalAmount(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-mono font-bold"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-[#1A1A1A] font-semibold mb-1">Description / Note</label>
+                <label className="text-xs font-bold text-stone-700 block mb-1">Memo</label>
                 <input
                   type="text"
                   value={shortDescription}
                   onChange={e => setShortDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-stone-300 rounded-xl bg-[#F9F8F6] text-xs focus:bg-white focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 text-xs"
                 />
+              </div>
+
+              <div className="pt-2 flex items-center justify-between">
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onDelete(transaction.id);
+                      onClose();
+                    }}
+                    className="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Voucher</span>
+                  </button>
+                )}
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setMode('view')}
+                    className="px-4 py-2 text-xs font-bold text-stone-600 hover:bg-stone-100 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 text-xs font-bold text-stone-950 bg-emerald-400 hover:bg-emerald-300 rounded-xl flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5 text-stone-950" />
+                    <span>Save Changes</span>
+                  </button>
+                </div>
               </div>
             </form>
           )}
-
-          {/* Raw Text Accordion */}
-          {transaction.rawText && (
-            <div className="pt-2 border-t border-stone-100">
-              <button
-                type="button"
-                onClick={() => setShowRaw(!showRaw)}
-                className="text-xs text-[#5A5A40] hover:text-[#484833] font-medium flex items-center gap-1 cursor-pointer"
-              >
-                {showRaw ? 'Hide raw document text' : 'View original parsed document text'}
-              </button>
-
-              {showRaw && (
-                <div className="mt-2 relative">
-                  <button
-                    type="button"
-                    onClick={handleCopyRaw}
-                    className="absolute top-2 right-2 text-xs bg-stone-800 text-white px-2.5 py-0.5 rounded-full flex items-center gap-1 cursor-pointer"
-                  >
-                    {copiedRaw ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    {copiedRaw ? 'Copied' : 'Copy'}
-                  </button>
-                  <pre className="p-4 bg-stone-900 text-stone-200 text-xs font-mono rounded-xl overflow-x-auto max-h-40 whitespace-pre-wrap">
-                    {transaction.rawText}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-stone-100 bg-[#F4F3EE] flex items-center justify-between">
-          <div>
-            {onDelete && (
-              <button
-                type="button"
-                onClick={() => {
-                  onDelete(transaction.id);
-                  onClose();
-                }}
-                className="text-xs font-semibold text-red-700 hover:text-red-800 px-3.5 py-1.5 rounded-full hover:bg-red-50 transition-colors cursor-pointer"
-              >
-                Delete Entry
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#706B63] bg-white border border-stone-300 hover:bg-stone-50 rounded-full transition-colors cursor-pointer"
-            >
-              {mode === 'edit' ? 'Cancel' : 'Close'}
-            </button>
-
-            {mode === 'edit' && (
-              <button
-                type="submit"
-                form="edit-transaction-form"
-                className="px-5 py-2 text-xs font-semibold text-white bg-[#5A5A40] hover:bg-[#484833] rounded-full transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Save className="w-3.5 h-3.5" />
-                Save Changes
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>

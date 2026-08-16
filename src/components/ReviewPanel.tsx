@@ -13,7 +13,12 @@ import {
   Check,
   Info,
   Layers,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ShieldCheck,
+  ArrowRight,
+  RotateCcw,
+  Equal,
+  Plus,
 } from 'lucide-react';
 import {
   CANONICAL_CATEGORIES,
@@ -63,7 +68,7 @@ export const ReviewPanel: React.FC<ReviewPanelProps> = ({
   const hasSubAndTax = subtotal.trim() !== '' && taxAmount.trim() !== '';
   const calculatedSum = parsedSub + parsedTax;
   const mathDiscrepancy = hasSubAndTax ? Math.abs(calculatedSum - parsedTot) : 0;
-  const isMathValid = !hasSubAndTax || mathDiscrepancy <= 1.0;
+  const isMathValid = !hasSubAndTax || mathDiscrepancy <= 1.5;
 
   // Determine effective status
   const effectiveStatus: 'Verified' | 'Needs Review' =
@@ -109,30 +114,30 @@ export const ReviewPanel: React.FC<ReviewPanelProps> = ({
   };
 
   return (
-    <div id="review-panel-container" className="w-full max-w-4xl mx-auto space-y-6">
+    <div id="review-panel-container" className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
       {/* Top Banner: AI Extraction Summary */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs">
+      <div className="bg-white border border-stone-200/80 rounded-3xl p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-[#5A5A40]">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-700">
+              <Sparkles className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-[#1A1A1A]">Review & Validate AI Extraction</h2>
-                <span className="text-xs bg-stone-100 text-[#706B63] px-2.5 py-0.5 rounded-full font-mono">
+                <h2 className="text-lg font-bold text-stone-900">Review & Validate AI Extraction</h2>
+                <span className="text-xs bg-stone-100 text-stone-700 px-2.5 py-0.5 rounded-full font-mono font-medium">
                   Human-in-the-Loop
                 </span>
               </div>
-              <p className="text-sm text-[#706B63]">
-                Verify AI-extracted values. Neha, you can edit any field before committing to the ledger.
+              <p className="text-xs text-stone-500">
+                Verify AI-extracted values before committing to your official company ledger.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <div className="text-xs text-[#8C877D] font-medium">Overall AI Score</div>
+              <div className="text-[10px] uppercase font-bold text-stone-400">Overall AI Score</div>
               <div className="flex items-center justify-end gap-1.5 mt-0.5">
                 <ConfidenceBadge score={parsedData.confidence} size="md" />
               </div>
@@ -140,360 +145,349 @@ export const ReviewPanel: React.FC<ReviewPanelProps> = ({
           </div>
         </div>
 
-        {/* Duplicate Warning Callout */}
-        {parsedData.duplicateWarning?.isDuplicate && (
-          <div
-            id="duplicate-warning-banner"
-            className="mt-4 p-4 rounded-xl bg-orange-50/80 border border-orange-200 text-[#92400E] flex items-start gap-3"
-          >
-            <AlertTriangle className="w-5 h-5 text-[#D97706] shrink-0 mt-0.5" />
-            <div className="text-sm flex-1">
-              <div className="font-semibold text-[#78350F] flex items-center gap-2">
-                Possible Duplicate Invoice Detected
-                <span className="text-xs bg-orange-200/70 text-[#78350F] px-2 py-0.5 rounded-full">
-                  {parsedData.duplicateWarning.type === 'EXACT_INVOICE'
-                    ? 'Matching Invoice #'
-                    : 'Matching Vendor + Amount'}
-                </span>
-              </div>
-              <p className="mt-1 text-[#92400E] leading-relaxed">{parsedData.duplicateWarning.reason}</p>
-              <div className="mt-2 text-xs text-[#B45309] font-medium">
-                You can still proceed and save if this is a valid recurring expense or separate line item.
-              </div>
+        {/* Warning Callouts if Duplicate or Anomaly detected */}
+        {parsedData.possibleDuplicate && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 text-xs flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="font-bold">Duplicate Notice:</span>
+              <p>{parsedData.reviewReason || 'Matching invoice number or vendor amount already exists in ledger.'}</p>
             </div>
           </div>
         )}
 
-        {/* Needs Review Diagnostic Callout */}
-        {parsedData.needsReview && !parsedData.duplicateWarning?.isDuplicate && (
-          <div
-            id="needs-review-banner"
-            className="mt-4 p-4 rounded-xl bg-orange-50/80 border border-orange-200 text-[#92400E] flex items-start gap-3"
-          >
-            <AlertTriangle className="w-5 h-5 text-[#D97706] shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <div className="font-semibold text-[#78350F]">⚠ Transaction Flagged: Needs Review</div>
-              <p className="mt-1 text-[#92400E]">
-                {parsedData.reviewReason ||
-                  'One or more fields have lower extraction confidence or mathematical variance. Please verify before saving.'}
+        {/* Math Mismatch Callout */}
+        {!isMathValid && (
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="font-bold">Mathematical Discrepancy Detected:</span>
+              <p>
+                Subtotal ({subtotal}) + Tax ({taxAmount}) = {calculatedSum.toFixed(2)}, which does not match Total ({totalAmount}). Please adjust the values.
               </p>
             </div>
           </div>
         )}
-
-        {/* Category Reasoning Highlight */}
-        {parsedData.categoryReason && (
-          <div className="mt-3 px-3.5 py-2.5 rounded-xl bg-stone-50 border border-stone-200/80 text-xs text-[#706B63] flex items-center gap-2">
-            <Info className="w-4 h-4 text-[#5A5A40] shrink-0" />
-            <span>
-              <strong className="text-[#1A1A1A]">AI Classification Reason:</strong> {parsedData.categoryReason}
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Main Editable Form */}
-      <form onSubmit={handleSaveTransaction} className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Vendor */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="input-vendor" className="text-xs font-semibold text-[#1A1A1A] flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-[#706B63]" />
-                Vendor / Merchant Name <span className="text-[#D97706]">*</span>
-              </label>
-              <ConfidenceBadge score={parsedData.fieldConfidence.vendor} size="sm" showLabel={false} />
+      {/* Main 2-Column Review Section */}
+      <form onSubmit={handleSaveTransaction} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Editable Structured Form (7 cols) */}
+        <div className="lg:col-span-7 bg-white border border-stone-200/80 rounded-3xl p-6 shadow-xs space-y-5">
+          <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+            <h3 className="text-sm font-bold text-stone-900">Extracted Voucher Details</h3>
+            <span className="text-xs text-stone-400 font-medium">Editable Fields</span>
+          </div>
+
+          <div className="space-y-4">
+            {/* Vendor Name */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-stone-500" />
+                  <span>Vendor / Merchant Name</span>
+                </label>
+                {parsedData.fieldConfidence?.vendor !== undefined && (
+                  <ConfidenceBadge score={parsedData.fieldConfidence.vendor} size="sm" showLabel={false} />
+                )}
+              </div>
+              <input
+                id="edit-vendor-input"
+                type="text"
+                required
+                value={vendor}
+                onChange={e => setVendor(e.target.value)}
+                placeholder="e.g., Meta Platforms Ireland, AWS, Delhivery"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900"
+              />
             </div>
-            <input
-              id="input-vendor"
-              type="text"
-              required
-              value={vendor}
-              onChange={e => setVendor(e.target.value)}
-              placeholder="e.g. Meta Platforms Ireland Ltd"
-              className="w-full px-3.5 py-2 text-sm bg-[#F9F8F6] border border-stone-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40] transition-all"
-            />
-          </div>
 
-          {/* Date */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="input-date" className="text-xs font-semibold text-[#1A1A1A] flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#706B63]" />
-                Transaction / Invoice Date <span className="text-[#D97706]">*</span>
-              </label>
-              <ConfidenceBadge score={parsedData.fieldConfidence.transactionDate} size="sm" showLabel={false} />
+            {/* Date & Invoice Number */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Transaction Date</span>
+                  </label>
+                  {parsedData.fieldConfidence?.transactionDate !== undefined && (
+                    <ConfidenceBadge score={parsedData.fieldConfidence.transactionDate} size="sm" showLabel={false} />
+                  )}
+                </div>
+                <input
+                  id="edit-date-input"
+                  type="date"
+                  required
+                  value={transactionDate}
+                  onChange={e => setTransactionDate(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-sm font-mono text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Invoice / Receipt #</span>
+                  </label>
+                  {parsedData.fieldConfidence?.invoiceNumber !== undefined && (
+                    <ConfidenceBadge score={parsedData.fieldConfidence.invoiceNumber} size="sm" showLabel={false} />
+                  )}
+                </div>
+                <input
+                  id="edit-invoice-number-input"
+                  type="text"
+                  value={invoiceNumber}
+                  onChange={e => setInvoiceNumber(e.target.value)}
+                  placeholder="e.g., INV-2391, AWS-889104"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-sm font-mono text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900"
+                />
+              </div>
             </div>
-            <input
-              id="input-date"
-              type="date"
-              required
-              value={transactionDate}
-              onChange={e => setTransactionDate(e.target.value)}
-              className="w-full px-3.5 py-2 text-sm bg-[#F9F8F6] border border-stone-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40] transition-all font-mono"
-            />
-          </div>
 
-          {/* Invoice Number */}
-          <div className="space-y-1.5">
-            <label htmlFor="input-invoice-number" className="text-xs font-semibold text-[#1A1A1A] flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-[#706B63]" />
-              Invoice / Receipt # <span className="text-[#8C877D] font-normal">(optional)</span>
-            </label>
-            <input
-              id="input-invoice-number"
-              type="text"
-              value={invoiceNumber}
-              onChange={e => setInvoiceNumber(e.target.value)}
-              placeholder="e.g. INV-2391"
-              className="w-full px-3.5 py-2 text-sm bg-[#F9F8F6] border border-stone-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40] transition-all font-mono"
-            />
-          </div>
-
-          {/* Expense Category */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="select-category" className="text-xs font-semibold text-[#1A1A1A] flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-[#706B63]" />
-                Expense Category <span className="text-[#D97706]">*</span>
-              </label>
-              <ConfidenceBadge score={parsedData.fieldConfidence.category} size="sm" showLabel={false} />
+            {/* Category Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-stone-500" />
+                  <span>Expense Category</span>
+                </label>
+                {parsedData.fieldConfidence?.category !== undefined && (
+                  <ConfidenceBadge score={parsedData.fieldConfidence.category} size="sm" showLabel={false} />
+                )}
+              </div>
+              <select
+                id="edit-category-select"
+                value={category}
+                onChange={e => setCategory(e.target.value as ExpenseCategory)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-sm font-semibold text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-stone-900"
+              >
+                {CANONICAL_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
             </div>
-            <select
-              id="select-category"
-              value={category}
-              onChange={e => setCategory(e.target.value as ExpenseCategory)}
-              className="w-full px-3.5 py-2 text-sm bg-[#F9F8F6] border border-stone-300 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-[#5A5A40]/30 focus:border-[#5A5A40] transition-all font-medium text-[#1A1A1A]"
-            >
-              {CANONICAL_CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
 
-        {/* Financial Breakdown (Subtotal, Tax, Total) */}
-        <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200/90 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#706B63] flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-[#5A5A40]" />
-              Financial Amounts & Currency
-            </span>
-            <div className="flex items-center gap-2">
-              <ConfidenceBadge score={parsedData.fieldConfidence.totalAmount} size="sm" showLabel={false} />
-              {hasSubAndTax && (
-                <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
-                    isMathValid ? 'bg-stone-200/80 text-[#5A5A40]' : 'bg-orange-100 text-[#92400E]'
-                  }`}
-                >
-                  {isMathValid ? '✓ Math Reconciled' : '⚠ Subtotal + Tax Mismatch'}
+            {/* Amounts & Currency Grid */}
+            <div className="p-4 rounded-2xl bg-stone-50/80 border border-stone-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">Financial Breakdown</span>
+                <span className="text-[11px] font-mono text-stone-500 font-semibold">
+                  Currency: {currency}
                 </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Subtotal */}
+                <div>
+                  <label className="text-[11px] font-bold text-stone-600 block mb-1">Subtotal (Net)</label>
+                  <input
+                    id="edit-subtotal-input"
+                    type="number"
+                    step="any"
+                    value={subtotal}
+                    onChange={e => setSubtotal(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900"
+                  />
+                </div>
+
+                {/* Tax */}
+                <div>
+                  <label className="text-[11px] font-bold text-stone-600 block mb-1">Tax / GST</label>
+                  <input
+                    id="edit-tax-input"
+                    type="number"
+                    step="any"
+                    value={taxAmount}
+                    onChange={e => setTaxAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900"
+                  />
+                </div>
+
+                {/* Total */}
+                <div>
+                  <label className="text-[11px] font-bold text-stone-600 block mb-1">Total Payable</label>
+                  <input
+                    id="edit-total-input"
+                    type="number"
+                    step="any"
+                    required
+                    value={totalAmount}
+                    onChange={e => setTotalAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-300 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900"
+                  />
+                </div>
+              </div>
+
+              {/* Real-time Math Equation Bar */}
+              {hasSubAndTax && (
+                <div className={`p-2.5 rounded-xl text-xs flex items-center justify-between font-mono ${
+                  isMathValid
+                    ? 'bg-emerald-500/10 text-emerald-900 border border-emerald-500/20'
+                    : 'bg-rose-50 text-rose-900 border border-rose-200'
+                }`}>
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <span>{parsedSub.toFixed(2)}</span>
+                    <Plus className="w-3 h-3 text-stone-400" />
+                    <span>{parsedTax.toFixed(2)}</span>
+                    <Equal className="w-3 h-3 text-stone-400" />
+                    <span>{calculatedSum.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 font-semibold text-[11px]">
+                    {isMathValid ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Math Validated</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Mismatch Δ {mathDiscrepancy.toFixed(2)}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            {/* Currency */}
+            {/* Description */}
             <div>
-              <label htmlFor="input-currency" className="block text-xs text-[#706B63] font-medium mb-1">
-                Currency
-              </label>
+              <label className="text-xs font-bold text-stone-700 block mb-1">Short Description / Accounting Memo</label>
               <input
-                id="input-currency"
+                id="edit-description-input"
                 type="text"
-                value={currency}
-                onChange={e => setCurrency(e.target.value)}
-                placeholder="INR"
-                className="w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-[#5A5A40]/30 font-mono uppercase"
-              />
-            </div>
-
-            {/* Subtotal */}
-            <div>
-              <label htmlFor="input-subtotal" className="block text-xs text-[#706B63] font-medium mb-1">
-                Subtotal (pre-tax)
-              </label>
-              <input
-                id="input-subtotal"
-                type="number"
-                step="any"
-                value={subtotal}
-                onChange={e => setSubtotal(e.target.value)}
-                placeholder="0.00"
-                className="w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-[#5A5A40]/30 font-mono"
-              />
-            </div>
-
-            {/* Tax */}
-            <div>
-              <label htmlFor="input-tax" className="block text-xs text-[#706B63] font-medium mb-1">
-                Tax (GST / VAT)
-              </label>
-              <input
-                id="input-tax"
-                type="number"
-                step="any"
-                value={taxAmount}
-                onChange={e => setTaxAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-[#5A5A40]/30 font-mono"
-              />
-            </div>
-
-            {/* Total Amount */}
-            <div>
-              <label htmlFor="input-total-amount" className="block text-xs font-semibold text-[#1A1A1A] mb-1">
-                Total Amount Due <span className="text-[#D97706]">*</span>
-              </label>
-              <input
-                id="input-total-amount"
-                type="number"
-                step="any"
-                required
-                value={totalAmount}
-                onChange={e => setTotalAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full px-3 py-2 text-sm font-semibold bg-white border-2 border-[#5A5A40]/50 rounded-xl focus:ring-2 focus:ring-[#5A5A40] font-mono text-[#1A1A1A]"
+                value={shortDescription}
+                onChange={e => setShortDescription(e.target.value)}
+                placeholder="e.g., Facebook advertising campaign for summer sale"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900"
               />
             </div>
           </div>
-
-          {!isMathValid && (
-            <p className="text-xs text-[#92400E] bg-orange-50 p-3 rounded-xl border border-orange-200">
-              Note: Subtotal ({subtotal}) + Tax ({taxAmount}) = {calculatedSum}, which differs from Total ({totalAmount}) by {mathDiscrepancy.toFixed(2)}. Please verify if discounts or other charges apply.
-            </p>
-          )}
         </div>
 
-        {/* Short Description */}
-        <div className="space-y-1.5">
-          <label htmlFor="input-description" className="text-xs font-semibold text-[#1A1A1A] flex items-center gap-1.5">
-            <FileSpreadsheet className="w-3.5 h-3.5 text-[#706B63]" />
-            Bookkeeping Note / Description
-          </label>
-          <input
-            id="input-description"
-            type="text"
-            value={shortDescription}
-            onChange={e => setShortDescription(e.target.value)}
-            placeholder="e.g. Facebook advertising campaign for summer glow sale"
-            className="w-full px-3.5 py-2 text-sm bg-[#F9F8F6] border border-stone-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#5A5A40]/30"
-          />
-        </div>
-
-        {/* Optional Line Items Table (if any extracted) */}
-        {parsedData.lineItems && parsedData.lineItems.length > 0 && (
-          <div className="border border-stone-200 rounded-xl overflow-hidden">
-            <div className="bg-stone-50 px-4 py-2.5 border-b border-stone-200 text-xs font-semibold text-[#1A1A1A] flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-[#5A5A40]" />
-              Extracted Line Items ({parsedData.lineItems.length})
-            </div>
-            <table className="w-full text-xs text-left">
-              <thead className="bg-stone-50/50 text-[#706B63] border-b border-stone-100">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Description</th>
-                  <th className="px-4 py-2 font-medium text-right">Qty</th>
-                  <th className="px-4 py-2 font-medium text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {parsedData.lineItems.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-stone-50/50">
-                    <td className="px-4 py-2.5 text-[#1A1A1A]">{item.description}</td>
-                    <td className="px-4 py-2.5 text-[#706B63] text-right">{item.quantity ?? '-'}</td>
-                    <td className="px-4 py-2.5 font-mono text-[#1A1A1A] text-right">
-                      {item.amount ? `${currency} ${item.amount.toLocaleString()}` : '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Raw Text Toggle Accordion */}
-        <div className="pt-2">
-          <button
-            id="toggle-raw-text-btn"
-            type="button"
-            onClick={() => setShowRawText(!showRawText)}
-            className="text-xs text-[#5A5A40] hover:text-[#484833] font-medium flex items-center gap-1 transition-colors cursor-pointer"
-          >
-            {showRawText ? 'Hide original invoice raw text' : 'Inspect original raw receipt / invoice text'}
-          </button>
-
-          {showRawText && (
-            <div className="mt-2 relative">
-              <button
-                type="button"
-                onClick={handleCopyRaw}
-                className="absolute top-2.5 right-2.5 text-xs bg-stone-800 hover:bg-stone-700 text-white px-2.5 py-1 rounded-full flex items-center gap-1 cursor-pointer"
+        {/* Right Column: Source Document & Line Items (5 cols) */}
+        <div className="lg:col-span-5 space-y-4">
+          {/* Status Decision Box */}
+          <div className="bg-white border border-stone-200/80 rounded-3xl p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-stone-900">Ledger Verification Status</span>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                  effectiveStatus === 'Verified'
+                    ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/20'
+                    : 'bg-amber-500/10 text-amber-900 border border-amber-500/25'
+                }`}
               >
-                {copiedRaw ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                {copiedRaw ? 'Copied' : 'Copy'}
-              </button>
-              <pre className="p-4 bg-stone-900 text-stone-100 text-xs font-mono rounded-xl overflow-x-auto max-h-48 whitespace-pre-wrap leading-relaxed">
-                {parsedData.rawText}
-              </pre>
+                {effectiveStatus === 'Verified' ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                ) : (
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                )}
+                <span>{effectiveStatus}</span>
+              </span>
             </div>
-          )}
-        </div>
 
-        {/* Verification Status Selector & Submission Actions */}
-        <div className="pt-4 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <span className="text-xs text-[#706B63] font-medium">Save as:</span>
-            <div className="inline-flex rounded-full border border-stone-200 p-0.5 bg-stone-100">
+            <p className="text-xs text-stone-500 leading-relaxed">
+              {effectiveStatus === 'Verified'
+                ? 'All critical fields extracted with high confidence and math checks passed.'
+                : 'Flagged for human sign-off due to lower confidence or missing fields.'}
+            </p>
+
+            <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setManualStatusOverride('Verified')}
-                className={`px-3.5 py-1 text-xs font-medium rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`flex-1 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                   effectiveStatus === 'Verified'
-                    ? 'bg-white text-[#5A5A40] shadow-xs border border-stone-200 font-bold'
-                    : 'text-[#706B63] hover:text-[#1A1A1A]'
+                    ? 'bg-stone-900 text-white border-stone-900'
+                    : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
                 }`}
               >
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#5A5A40]" />
-                Verified
+                Mark Verified
               </button>
               <button
                 type="button"
                 onClick={() => setManualStatusOverride('Needs Review')}
-                className={`px-3.5 py-1 text-xs font-medium rounded-full transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`flex-1 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                   effectiveStatus === 'Needs Review'
-                    ? 'bg-white text-[#B45309] shadow-xs border border-stone-200 font-bold'
-                    : 'text-[#706B63] hover:text-[#1A1A1A]'
+                    ? 'bg-amber-500/20 text-amber-900 border-amber-400'
+                    : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
                 }`}
               >
-                <AlertTriangle className="w-3.5 h-3.5 text-[#D97706]" />
-                Needs Review
+                Flag Review
               </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          {/* Line Items Table if present */}
+          {parsedData.lineItems && parsedData.lineItems.length > 0 && (
+            <div className="bg-white border border-stone-200/80 rounded-3xl p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                <span className="text-xs font-bold text-stone-900">Extracted Line Items</span>
+                <span className="text-[11px] font-mono text-stone-400 font-semibold">
+                  {parsedData.lineItems.length} items
+                </span>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {parsedData.lineItems.map((item, idx) => (
+                  <div key={idx} className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/60 text-xs space-y-0.5">
+                    <div className="flex items-center justify-between font-bold text-stone-900">
+                      <span className="truncate pr-2">{item.description}</span>
+                      <span className="font-mono shrink-0">
+                        {currency} {item.amount.toLocaleString()}
+                      </span>
+                    </div>
+                    {item.quantity && (
+                      <div className="text-[11px] text-stone-500 font-mono">
+                        Qty: {item.quantity} {item.unitPrice ? `@ ${currency} ${item.unitPrice}` : ''}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Raw Source Text Box */}
+          <div className="bg-white border border-stone-200/80 rounded-3xl p-5 shadow-xs space-y-2">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+              <span className="text-xs font-bold text-stone-900">Source Document Text</span>
+              <button
+                type="button"
+                onClick={handleCopyRaw}
+                className="text-[11px] font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1 cursor-pointer"
+              >
+                {copiedRaw ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedRaw ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+            <pre className="text-[11px] font-mono text-stone-600 bg-stone-50 p-3 rounded-xl max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed border border-stone-200/60">
+              {parsedData.rawText}
+            </pre>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3 pt-2">
             <button
-              id="cancel-review-btn"
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-[#706B63] hover:text-[#1A1A1A] bg-white border border-stone-300 rounded-full hover:bg-stone-50 transition-colors cursor-pointer"
+              className="flex-1 py-3 text-xs font-bold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-2xl transition-colors cursor-pointer text-center"
             >
-              Cancel
+              Cancel / Back
             </button>
+
             <button
-              id="save-to-ledger-btn"
+              id="confirm-save-ledger-btn"
               type="submit"
-              className={`px-6 py-2 text-sm font-semibold text-white rounded-full shadow-2xs transition-all flex items-center gap-2 cursor-pointer ${
-                effectiveStatus === 'Verified'
-                  ? 'bg-[#5A5A40] hover:bg-[#484833] active:bg-[#3C3C2B]'
-                  : 'bg-[#D97706] hover:bg-[#B45309] active:bg-[#92400E]'
-              }`}
+              className="flex-2 py-3 text-xs sm:text-sm font-bold text-stone-950 bg-emerald-400 hover:bg-emerald-300 active:bg-emerald-500 rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Save className="w-4 h-4" />
-              Save to Ledger
+              <Save className="w-4 h-4 text-stone-950" />
+              <span>Commit to Ledger</span>
             </button>
           </div>
         </div>

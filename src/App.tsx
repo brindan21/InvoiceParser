@@ -25,7 +25,7 @@ import {
   resetLedgerStorage,
   saveTransactionToStorage,
 } from './services/ledger/ledgerStorage';
-import { CheckCircle2, AlertTriangle, Sparkles, X } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Sparkles, X, ShieldCheck, Heart } from 'lucide-react';
 
 export default function App() {
   // Core Data State
@@ -104,7 +104,7 @@ export default function App() {
     const updated = saveTransactionToStorage(newTx);
     setTransactions(updated);
     showToast(
-      `Transaction for ${newTx.vendor} (${newTx.currency} ${newTx.totalAmount.toLocaleString()}) saved to ledger!`,
+      `Voucher for ${newTx.vendor} (${newTx.currency} ${newTx.totalAmount.toLocaleString()}) booked to ledger!`,
       'success'
     );
     setActiveTab('ledger');
@@ -114,7 +114,7 @@ export default function App() {
   const handleUpdateTransaction = (updatedTx: LedgerTransaction) => {
     const updated = saveTransactionToStorage(updatedTx);
     setTransactions(updated);
-    showToast(`Updated transaction #${updatedTx.id.slice(0, 6)} successfully.`, 'info');
+    showToast(`Updated voucher #${updatedTx.id.slice(0, 8)} successfully.`, 'info');
   };
 
   // Single transaction delete confirmation
@@ -123,7 +123,7 @@ export default function App() {
       const updated = deleteTransactionFromStorage(deleteTargetId);
       setTransactions(updated);
       setDeleteTargetId(null);
-      showToast('Transaction removed from ledger.', 'info');
+      showToast('Voucher removed from ledger.', 'info');
     }
   };
 
@@ -142,7 +142,7 @@ export default function App() {
       }
     });
     setTransactions(updatedList);
-    showToast(`Marked ${ids.length} transaction${ids.length > 1 ? 's' : ''} as Verified.`, 'success');
+    showToast(`Marked ${ids.length} voucher${ids.length > 1 ? 's' : ''} as Verified.`, 'success');
   };
 
   // Batch delete confirmation
@@ -154,7 +154,7 @@ export default function App() {
       });
       setTransactions(updatedList);
       setBatchDeleteIds(null);
-      showToast(`Deleted ${batchDeleteIds.length} transactions from ledger.`, 'info');
+      showToast(`Deleted ${batchDeleteIds.length} vouchers from ledger.`, 'info');
     }
   };
 
@@ -163,11 +163,11 @@ export default function App() {
     const sample = resetLedgerStorage();
     setTransactions(sample);
     setShowResetConfirm(false);
-    showToast('Reset ledger to default sample D2C transactions.', 'info');
+    showToast('Reset ledger to sample D2C brand vouchers.', 'info');
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F8F6] text-[#2C2926] font-sans flex flex-col selection:bg-[#5A5A40] selection:text-white">
+    <div className="min-h-screen bg-stone-100/60 text-stone-900 font-sans flex flex-col selection:bg-stone-900 selection:text-white">
       {/* Navigation Bar */}
       <Navbar
         activeTab={activeTab}
@@ -187,15 +187,15 @@ export default function App() {
             id="app-toast-notification"
             className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl shadow-xl border text-xs sm:text-sm font-medium flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 duration-200 ${
               toastMessage.type === 'success'
-                ? 'bg-[#2C2926] text-white border-stone-700'
+                ? 'bg-stone-900 text-white border-stone-800'
                 : toastMessage.type === 'warning'
                 ? 'bg-amber-950 text-white border-amber-800'
-                : 'bg-[#5A5A40] text-white border-stone-600'
+                : 'bg-stone-800 text-white border-stone-700'
             }`}
           >
             {toastMessage.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
             {toastMessage.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400" />}
-            {toastMessage.type === 'info' && <Sparkles className="w-4 h-4 text-stone-200" />}
+            {toastMessage.type === 'info' && <Sparkles className="w-4 h-4 text-amber-400" />}
             <span>{toastMessage.text}</span>
             <button
               type="button"
@@ -280,8 +280,8 @@ export default function App() {
       {/* Single Delete Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={deleteTargetId !== null}
-        title="Delete Transaction"
-        message="Are you sure you want to permanently delete this entry from your running ledger? This action cannot be undone."
+        title="Delete Voucher"
+        message="Are you sure you want to permanently delete this voucher from your running ledger? This action cannot be undone."
         onConfirm={handleConfirmSingleDelete}
         onCancel={() => setDeleteTargetId(null)}
       />
@@ -289,8 +289,8 @@ export default function App() {
       {/* Batch Delete Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={batchDeleteIds !== null && batchDeleteIds.length > 0}
-        title="Delete Selected Transactions"
-        message={`Are you sure you want to delete ${batchDeleteIds?.length} selected transactions from your running ledger?`}
+        title="Delete Selected Vouchers"
+        message={`Are you sure you want to delete ${batchDeleteIds?.length} selected vouchers from your running ledger?`}
         onConfirm={handleConfirmBatchDelete}
         onCancel={() => setBatchDeleteIds(null)}
       />
@@ -304,16 +304,17 @@ export default function App() {
         onCancel={() => setShowResetConfirm(false)}
       />
 
-      {/* Fintech Footer */}
-      <footer className="mt-auto border-t border-stone-200/90 bg-[#F4F3EE] py-4 px-4 sm:px-8 text-center text-xs text-[#706B63]">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      {/* Modern Fintech Footer */}
+      <footer className="mt-auto border-t border-stone-200/80 bg-white py-5 px-4 sm:px-8 text-xs text-stone-500">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-[#1A1A1A]">LedgerAI</span>
+            <span className="font-bold text-stone-900">LedgerAI</span>
             <span>·</span>
-            <span>Automated AI Bookkeeping & Invoice Extraction Engine</span>
+            <span>Intelligent Financial Extraction & Month-End Audit OS</span>
           </div>
-          <div className="text-[#8C877D]">
-            Powered by Gemini 2.5 Flash · Deterministic Financial Validation · Human-in-the-Loop Review
+          <div className="flex items-center gap-2 text-stone-400">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>Dual-layer AI Extraction + Deterministic Fallback</span>
           </div>
         </div>
       </footer>
