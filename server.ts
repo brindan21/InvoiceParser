@@ -3,6 +3,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { CANONICAL_CATEGORIES } from './src/types';
+import { parseInvoiceFallback } from './src/services/ai/fallbackParser';
 
 dotenv.config();
 
@@ -319,74 +320,6 @@ Return a JSON list of insights with:
     return res.json({ insights: generateFallbackInsights(transactions || []) });
   }
 });
-
-// Deterministic fallback regex parser for offline / backup resilience
-function parseInvoiceFallback(text: string): any {
-  const lower = text.toLowerCase();
-  
-  // Extract amount
-  let totalAmount: number | null = null;
-  const amountMatch = text.match(/(?:total|amount due|grand total|payable|net|paid)[:\s]*[₹$€£\s]*([0-9,]+(?:\.[0-9]{2})?)/i)
-    || text.match(/[₹$€£]\s*([0-9,]+(?:\.[0-9]{2})?)/);
-  if (amountMatch) {
-    const rawNum = amountMatch[1].replace(/,/g, '');
-    totalAmount = parseFloat(rawNum);
-  }
-
-  // Extract currency
-  let currency = 'INR';
-  if (text.includes('$') || text.includes('USD')) currency = 'USD';
-  else if (text.includes('€') || text.includes('EUR')) currency = 'EUR';
-  else if (text.includes('£') || text.includes('GBP')) currency = 'GBP';
-  else if (text.includes('₹') || text.includes('INR')) currency = 'INR';
-
-  // Vendor detection
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  let vendor = lines[0] || 'Unknown Merchant';
-  if (vendor.toLowerCase().includes('invoice') && lines.length > 1) {
-    vendor = lines[1];
-  }
-
-  // Category heuristics
-  let category = 'Miscellaneous';
-  if (lower.includes('facebook') || lower.includes('meta') || lower.includes('google ads') || lower.includes('advertising') || lower.includes('campaign')) {
-    category = 'Marketing & Advertising';
-  } else if (lower.includes('aws') || lower.includes('cloud') || lower.includes('software') || lower.includes('saas') || lower.includes('shopify') || lower.includes('subscription')) {
-    category = 'Software & SaaS';
-  } else if (lower.includes('shipping') || lower.includes('delhivery') || lower.includes('courier') || lower.includes('freight') || lower.includes('logistics')) {
-    category = 'Logistics & Shipping';
-  } else if (lower.includes('packaging') || lower.includes('boxes') || lower.includes('raw materials') || lower.includes('inventory')) {
-    category = 'Inventory & Raw Materials';
-  } else if (lower.includes('chair') || lower.includes('hardware') || lower.includes('laptop') || lower.includes('monitor') || lower.includes('equipment')) {
-    category = 'Equipment & Hardware';
-  } else if (lower.includes('audit') || lower.includes('chartered accountant') || lower.includes('legal') || lower.includes('consulting')) {
-    category = 'Professional Services';
-  }
-
-  return {
-    vendor,
-    transactionDate: new Date().toISOString().split('T')[0],
-    invoiceNumber: text.match(/(?:invoice|inv|bill|receipt|tax invoice)[\s#:]*([A-Za-z0-9\-_]+)/i)?.[1] || null,
-    subtotal: null,
-    taxAmount: null,
-    totalAmount: totalAmount || 1000,
-    currency,
-    category,
-    confidence: 0.85,
-    fieldConfidence: {
-      vendor: 0.85,
-      transactionDate: 0.80,
-      totalAmount: totalAmount ? 0.90 : 0.40,
-      currency: 0.95,
-      category: 0.85,
-    },
-    needsReview: !totalAmount,
-    reviewReason: !totalAmount ? 'Could not automatically confirm exact total amount' : null,
-    shortDescription: `${category} expense for ${vendor}`,
-    categoryReason: `Classified based on document keywords.`,
-    rawText: text,
-  };
-}
 
 function generateFallbackInsights(transactions: any[]): any[] {
   if (!transactions.length) return [];

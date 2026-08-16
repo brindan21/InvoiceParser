@@ -4,6 +4,7 @@ import {
 } from '../../types';
 import { checkDuplicateInvoice } from '../validation/duplicateDetector';
 import { runValidationEngine } from '../validation/validationEngine';
+import { parseInvoiceFallback } from './fallbackParser';
 
 export interface ParseProgressCallback {
   (step: string, percent: number): void;
@@ -11,6 +12,7 @@ export interface ParseProgressCallback {
 
 /**
  * Orchestrates the full AI Extraction -> Validation -> Duplicate Detection pipeline.
+ * Robust across local dev, Docker containers, and static/serverless Vercel deployments.
  */
 export async function parseInvoiceText(
   rawText: string,
@@ -27,7 +29,7 @@ export async function parseInvoiceText(
 
   onProgress?.('Connecting to Gemini AI semantic extraction...', 45);
 
-  let rawParsed: any;
+  let rawParsed: any = null;
   try {
     const response = await fetch('/api/parse-invoice', {
       method: 'POST',
@@ -35,15 +37,20 @@ export async function parseInvoiceText(
       body: JSON.stringify({ rawText }),
     });
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.message || `Server error (${response.status})`);
+    if (response.ok) {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        rawParsed = await response.json();
+      }
     }
+  } catch (networkErr) {
+    console.warn('Backend /api/parse-invoice unavailable; using resilient client-side extraction engine:', networkErr);
+  }
 
-    rawParsed = await response.json();
-  } catch (error: any) {
-    console.error('API extraction call failed:', error);
-    throw new Error(error.message || 'Failed to reach AI parsing service');
+  // If server-side extraction was unavailable (e.g. static hosting on Vercel or quota limits), use deterministic client parser
+  if (!rawParsed || !rawParsed.vendor) {
+    console.info('Running client-side deterministic invoice analysis engine...');
+    rawParsed = parseInvoiceFallback(rawText);
   }
 
   onProgress?.('Classifying expense & verifying line items...', 70);
