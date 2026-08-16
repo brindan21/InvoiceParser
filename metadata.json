@@ -1,0 +1,6 @@
+{
+  "name": "LedgerAI",
+  "description": "AI-powered receipt & invoice parser and bookkeeping ledger for D2C finance teams.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
